@@ -309,7 +309,8 @@
       $('#bulkClose').onclick = ()=> $('#bulkDialog').close();
       $('#bulkClear').onclick = ()=> $('#bulkTextarea').value='';
       $('#bulkAdd').onclick = async ()=>{
-        const lines = $('#bulkTextarea').value.split(/?
+        const lines = $('#bulkTextarea').value.split(/
+?
 /).map(s=>s.trim()).filter(Boolean);
         for(const n of lines){ await addPerson(n); }
         $('#bulkTextarea').value=''; $('#bulkDialog').close();
