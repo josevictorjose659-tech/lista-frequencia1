@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lista de Frequência (Online)</title>
+  <style>
+    :root {
+      --bg: #0f172a;         /* slate-900 */
+      --card: #111827;       /* gray-900 */
+      --muted: #1f2937;      /* gray-800 */
+      --text: #e5e7eb;       /* gray-200 */
+      --text-dim: #9ca3af;   /* gray-400 */
+      --brand: #22d3ee;      /* cyan-400 */
+      --ok: #10b981;         /* emerald-500 */
+      --warn: #f59e0b;       /* amber-500 */
+      --danger: #ef4444;     /* red-500 */
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:linear-gradient(180deg, #0b1220, var(--bg));
+      color:var(--text); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    }
+    .container{max-width:1100px; margin:32px auto; padding:0 16px}
+    header{display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:16px}
+    .title{display:flex; gap:12px; align-items:center}
+    .title h1{margin:0; font-size:clamp(20px,2.8vw,28px); letter-spacing:.3px}
+    .badge{background:linear-gradient(135deg,#22d3ee22,#22d3ee11); border:1px solid #22d3ee44; color:#a5f3fc; padding:6px 10px; border-radius:999px; font-size:12px}
+    .card{background:linear-gradient(180deg, #0f172a, #0b1220 60%); border:1px solid #ffffff14; border-radius:var(--radius); box-shadow:var(--shadow)}
+    .toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:16px}
+    input[type="text"], textarea, select{
+      background:var(--muted); border:1px solid #ffffff22; color:var(--text);
+      padding:10px 12px; border-radius:12px; outline:none; transition:transform .04s ease, border-color .2s ease;
+    }
+    input[type="text"]:focus, textarea:focus{border-color:var(--brand);}
+    .btn{background:#111827; border:1px solid #ffffff22; color:var(--text); padding:10px 14px; border-radius:12px; cursor:pointer; transition:transform .04s ease, background .2s ease, border-color .2s ease}
+    .btn:hover{background:#0b1220}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:linear-gradient(135deg,#22d3ee33,#22d3ee22); border-color:#22d3ee66; color:#a5f3fc}
+    .btn.success{background:linear-gradient(135deg,#10b98133,#10b98122); border-color:#10b98166; color:#bbf7d0}
+    .btn.warn{background:linear-gradient(135deg,#f59e0b33,#f59e0b22); border-color:#f59e0b66; color:#fde68a}
+    .btn.danger{background:linear-gradient(135deg,#ef444433,#ef444422); border-color:#ef444466; color:#fecaca}
+    .grid{display:grid; grid-template-columns:1fr; gap:16px; padding:16px}
+    @media (min-width: 900px){ .grid{ grid-template-columns: 1.1fr .9fr; } }
+
+    table{width:100%; border-collapse:separate; border-spacing:0 8px}
+    thead th{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); text-align:left; padding:0 12px}
+    tbody tr{background:linear-gradient(180deg,#0b1220,#0f172a); border:1px solid #ffffff14}
+    tbody td{padding:12px; border-top:1px solid #ffffff14; border-bottom:1px solid #00000055}
+    tbody tr{border-radius:12px; overflow:hidden}
+    tbody tr td:first-child{border-left:1px solid #ffffff14; border-top-left-radius:12px; border-bottom-left-radius:12px}
+    tbody tr td:last-child{border-right:1px solid #ffffff14; border-top-right-radius:12px; border-bottom-right-radius:12px}
+
+    .row-actions{display:flex; gap:6px; flex-wrap:wrap}
+    .status{font-size:12px; padding:6px 8px; border-radius:999px; border:1px solid #ffffff22; display:inline-flex; align-items:center; gap:6px}
+    .status.present{border-color:#10b98166; color:#bbf7d0; background:#10b98122}
+    .status.absent{border-color:#ef444466; color:#fecaca; background:#ef444422}
+
+    .pill{font-size:12px; padding:6px 10px; border:1px dashed #ffffff22; border-radius:999px; color:#a3a3a3}
+    .note{min-width:140px; max-width:280px; display:inline-block; background:#0b1220; border:1px dashed #ffffff22; border-radius:10px; padding:8px}
+
+    footer{opacity:.7; font-size:12px; text-align:center; margin:18px 0}
+    .hint{color:var(--text-dim); font-size:12px}
+    .hide{display:none!important}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 7H21M8 12H21M8 17H21" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M4 7h.01M4 12h.01M4 17h.01" stroke="#22d3ee" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <h1>Lista de Frequência</h1>
+        <span class="badge" id="countBadge">0 presentes</span>
+      </div>
+      <div class="hint" id="headerHint">Conectado ao Firebase (tempo real).</div>
+    </header>
+
+    <!-- ========= CHECK-IN (modo convidado) ========= -->
+    <section id="checkinSection" class="card hide" style="padding:20px;">
+      <h2 style="margin-top:0">Check-in do Convidado</h2>
+      <p id="helloGuest" style="margin:8px 0 16px 0"></p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn success" id="confirmBtn">Confirmar presença</button>
+        <button class="btn" id="editNameBtn">Editar nome</button>
+      </div>
+      <p class="hint" style="margin-top:12px">Dica: salve este link. Se precisar, você pode abrir de novo para ver se já confirmou.</p>
+      <div id="confirmStatus" class="pill" style="margin-top:12px"></div>
+    </section>
+
+    <!-- ========= ADMIN (modo organizador) ========= -->
+    <section id="adminControls" class="card grid">
+      <!-- painel esquerdo: adicionar/filtrar -->
+      <div>
+        <div class="toolbar">
+          <input id="nameInput" type="text" placeholder="Nome do convidado/aluno" />
+          <button class="btn primary" id="addBtn">Adicionar</button>
+          <button class="btn" id="bulkBtn" title="Adicionar vários">Adicionar em lote</button>
+        </div>
+        <div class="toolbar">
+          <input id="searchInput" type="text" placeholder="Filtrar por nome..." />
+          <select id="filterStatus">
+            <option value="todos">Todos</option>
+            <option value="presentes">Somente presentes</option>
+            <option value="ausentes">Somente ausentes</option>
+          </select>
+          <button class="btn" id="sortBtn" title="Ordenar A→Z/Z→A">Ordenar</button>
+        </div>
+        <div class="toolbar">
+          <button class="btn success" id="exportCsvBtn">Exportar CSV</button>
+          <button class="btn" id="printBtn">Imprimir</button>
+          <button class="btn warn" id="clearBtn">Limpar tudo</button>
+        </div>
+      </div>
+
+      <!-- painel direito: info rápida -->
+      <div style="padding:16px;">
+        <div class="pill" id="summaryPill">0 cadastrados · 0 presentes</div>
+        <p class="hint" style="margin-top:10px;">Dicas:
+          <br>• Envie QR Codes com URL: <code>seu-site.com?mode=checkin&nome=Maria</code> (ou <code>&id=UUID</code>).
+          <br>• Clique em <strong>Presente</strong> para marcar entrada (salva hora automaticamente).
+          <br>• Duplo clique no nome para editar. Notas editáveis ao lado.
+          <br>• Tudo sincroniza em tempo real via Firebase Firestore.
+        </p>
+      </div>
+    </section>
+
+    <section id="adminTable" class="card" style="padding:16px; margin-top:16px;">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nome</th>
+            <th>Status</th>
+            <th>Horário</th>
+            <th>Notas</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </section>
+
+    <footer>Feito para você — online, rápido e em tempo real (Firebase Firestore).</footer>
+  </div>
+
+  <!-- Modal básico para adicionar em lote -->
+  <dialog id="bulkDialog" style="background:#0b1220; color:var(--text); border:1px solid #ffffff22; border-radius:16px; padding:0; max-width:560px; width:90%">
+    <div style="padding:16px 16px 0 16px; display:flex; align-items:center; justify-content:space-between; gap:8px">
+      <h3 style="margin:0; font-size:18px">Adicionar em lote</h3>
+      <button class="btn" id="bulkClose">Fechar</button>
+    </div>
+    <div style="padding:16px">
+      <textarea id="bulkTextarea" rows="10" placeholder="Cole aqui (um nome por linha)"></textarea>
+      <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end">
+        <button class="btn" id="bulkClear">Limpar</button>
+        <button class="btn primary" id="bulkAdd">Adicionar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Firebase SDKs (v10+ modular) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import { getFirestore, collection, addDoc, setDoc, doc, getDoc, updateDoc, onSnapshot, serverTimestamp, getDocs, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    // ====== CONFIGURE AQUI ======
+    const firebaseConfig = {
+      apiKey: "COLOQUE_AQUI",
+      authDomain: "COLOQUE_AQUI.firebaseapp.com",
+      projectId: "COLOQUE_AQUI",
+      storageBucket: "COLOQUE_AQUI.appspot.com",
+      messagingSenderId: "COLOQUE_AQUI",
+      appId: "COLOQUE_AQUI"
+    };
+
+    // ====== Inicialização Firebase ======
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ====== Helpers DOM ======
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const fmtTime = d => d ? new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-';
+
+    // ====== Modo (admin ou checkin) ======
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode') || (params.has('nome') || params.has('id') ? 'checkin' : 'admin');
+
+    if(mode === 'checkin'){
+      $('#adminControls').classList.add('hide');
+      $('#adminTable').classList.add('hide');
+      $('#checkinSection').classList.remove('hide');
+      setupCheckin();
+    }else{
+      $('#checkinSection').classList.add('hide');
+      $('#adminControls').classList.remove('hide');
+      $('#adminTable').classList.remove('hide');
+      setupAdmin();
+    }
+
+    // ====== Col. Firestore ======
+    const col = collection(db, 'presencas');
+
+    // ====== CHECK-IN (convidado) ======
+    async function setupCheckin(){
+      const idParam = params.get('id');
+      let nome = (params.get('nome')||'').trim();
+      if(!nome && !idParam) nome = prompt('Seu nome completo para confirmar presença:')||'';
+      nome = nome.trim();
+
+      const docRef = idParam ? doc(db, 'presencas', idParam) : (nome ? doc(db, 'presencas', slugify(nome)) : null);
+      if(!docRef){ $('#helloGuest').textContent = 'Informe seu nome para continuar.'; return; }
+
+      // Garante que o registro exista
+      const snap = await getDoc(docRef);
+      if(!snap.exists()){
+        await setDoc(docRef, { name: nome || 'Convidado', present: false, ts: null, note: '' });
+      }
+
+      const firstName = (nome||snap.data().name||'Convidado').split(' ')[0];
+      $('#helloGuest').textContent = `Olá, ${firstName}! Clique para confirmar sua presença.`;
+
+      // status ao vivo do próprio registro
+      onSnapshot(docRef, (ds)=>{
+        const d = ds.data();
+        const msg = d.present ? `Presença confirmada às ${new Date(d.ts?.seconds? d.ts.seconds*1000 : Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : 'Ainda não confirmado';
+        $('#confirmStatus').textContent = msg;
+      });
+
+      $('#confirmBtn').onclick = async ()=>{
+        await updateDoc(docRef, { present: true, ts: serverTimestamp() });
+        $('#confirmBtn').textContent = 'Confirmado!';
+      };
+      $('#editNameBtn').onclick = async ()=>{
+        const novo = prompt('Editar nome:', nome || (await getDoc(docRef)).data().name || '');
+        if(novo!==null){ await updateDoc(docRef, { name: novo.trim() }); }
+      };
+    }
+
+    // ====== ADMIN (organizador) ======
+    let currentData = []; // cache para exportação/filtragem
+    function getFiltered(){
+      const q = $('#searchInput').value.toLowerCase().trim();
+      const f = $('#filterStatus').value;
+      let arr = currentData.filter(p => p.name.toLowerCase().includes(q));
+      if(f==='presentes') arr = arr.filter(p=>p.present);
+      if(f==='ausentes') arr = arr.filter(p=>!p.present);
+      return arr;
+    }
+
+    function render(){
+      const tbody = $('#tableBody');
+      tbody.innerHTML = '';
+      const arr = getFiltered();
+      arr.forEach((p, i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>
+            <span class="name" data-id="${p.id}" title="Duplo clique para editar" style="cursor:text">${escapeHtml(p.name)}</span>
+          </td>
+          <td>
+            <span class="status ${p.present? 'present':'absent'}">${p.present?'Presente':'Ausente'}</span>
+          </td>
+          <td>${fmtTime(p.ts)}</td>
+          <td>
+            <div class="note" contenteditable="true" data-note-id="${p.id}" spellcheck="false">${escapeHtml(p.note||'')}</div>
+          </td>
+          <td>
+            <div class="row-actions">
+              <button class="btn success" data-act="toggle" data-id="${p.id}">${p.present?'Desmarcar':'Marcar presente'}</button>
+              <button class="btn" data-act="rename" data-id="${p.id}">Renomear</button>
+              <button class="btn danger" data-act="remove" data-id="${p.id}">Remover</button>
+            </div>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      const total = currentData.length;
+      const presentes = currentData.filter(x=>x.present).length;
+      $('#summaryPill').textContent = `${total} cadastrados · ${presentes} presentes`;
+      $('#countBadge').textContent = `${presentes} presentes`;
+
+      // listeners dinâmicos
+      $$('[data-act="toggle"]').forEach(btn=>btn.onclick = ()=>togglePresent(btn.dataset.id));
+      $$('[data-act="remove"]').forEach(btn=>btn.onclick = ()=>removePerson(btn.dataset.id));
+      $$('[data-act="rename"]').forEach(btn=>btn.onclick = ()=>renamePerson(btn.dataset.id));
+      $$('.name').forEach(el=>{ el.ondblclick = ()=>renamePerson(el.dataset.id); });
+      $$('.note').forEach(el=>{ el.oninput = ()=>updateNote(el.dataset.noteId, el.innerText.trim()); });
+    }
+
+    async function setupAdmin(){
+      // stream em tempo real, ordenado por nome
+      const qCol = query(col, orderBy('name'));
+      onSnapshot(qCol, (snap)=>{
+        currentData = snap.docs.map(d=>({ id:d.id, ...normalizeDoc(d.data()) }));
+        render();
+      });
+
+      // Eventos UI
+      $('#addBtn').onclick = async ()=>{ const v=$('#nameInput').value.trim(); if(v){ await addPerson(v); $('#nameInput').value=''; }};
+      $('#nameInput').addEventListener('keydown', async (e)=>{ if(e.key==='Enter'){ const v=$('#nameInput').value.trim(); if(v){ await addPerson(v); $('#nameInput').value=''; }}});
+      $('#bulkBtn').onclick = ()=> $('#bulkDialog').showModal();
+      $('#bulkClose').onclick = ()=> $('#bulkDialog').close();
+      $('#bulkClear').onclick = ()=> $('#bulkTextarea').value='';
+      $('#bulkAdd').onclick = async ()=>{
+        const lines = $('#bulkTextarea').value.split(/?
+/).map(s=>s.trim()).filter(Boolean);
+        for(const n of lines){ await addPerson(n); }
+        $('#bulkTextarea').value=''; $('#bulkDialog').close();
+      };
+      $('#searchInput').oninput = render;
+      $('#filterStatus').onchange = render;
+      $('#sortBtn').onclick = ()=>{ currentData.sort((a,b)=> a.name.localeCompare(b.name)); render(); };
+      $('#exportCsvBtn').onclick = exportCSV;
+      $('#printBtn').onclick = ()=>window.print();
+      $('#clearBtn').onclick = clearAll;
+    }
+
+    // ====== CRUD Firestore ======
+    function normalizeDoc(d){
+      return {
+        name: d.name || 'Convidado',
+        present: !!d.present,
+        ts: d.ts?.seconds ? new Date(d.ts.seconds*1000) : (d.ts ? new Date(d.ts) : null),
+        note: d.note || ''
+      };
+    }
+
+    async function addPerson(name){
+      const id = slugify(name);
+      const ref = doc(db, 'presencas', id);
+      const snap = await getDoc(ref);
+      if(snap.exists()) return; // evita duplicar pelo mesmo slug
+      await setDoc(ref, { name, present:false, ts:null, note:'' });
+    }
+
+    async function togglePresent(id){
+      const ref = doc(db, 'presencas', id);
+      const ds = await getDoc(ref);
+      const was = !!ds.data()?.present;
+      await updateDoc(ref, { present: !was, ts: !was ? serverTimestamp() : null });
+    }
+
+    async function removePerson(id){
+      if(!confirm('Remover este nome?')) return;
+      await deleteDoc(doc(db,'presencas', id));
+    }
+
+    async function renamePerson(id){
+      const p = currentData.find(x=>x.id===id); if(!p) return;
+      const novo = prompt('Novo nome:', p.name); if(novo===null) return;
+      // Para manter chave consistente com slug do nome, cria novo doc e apaga o antigo
+      const newId = slugify(novo.trim());
+      if(!newId) return;
+      const oldRef = doc(db,'presencas', id);
+      const newRef = doc(db,'presencas', newId);
+      const ds = await getDoc(oldRef);
+      const val = ds.data();
+      await setDoc(newRef, { ...val, name: novo.trim() });
+      await deleteDoc(oldRef);
+    }
+
+    async function updateNote(id, newNote){
+      await updateDoc(doc(db,'presencas', id), { note: newNote });
+    }
+
+    async function clearAll(){
+      if(!confirm('Tem certeza que deseja limpar toda a lista?')) return;
+      const snaps = await getDocs(col);
+      const deletions = snaps.docs.map(d=> deleteDoc(d.ref));
+      await Promise.all(deletions);
+    }
+
+    function exportCSV(){
+      const header = ['pos','nome','status','horario','notas'];
+      const rows = getFiltered().map((p, i)=>[
+        i+1,
+        '"'+p.name.replaceAll('"','""')+'"',
+        p.present ? 'presente' : 'ausente',
+        p.ts ? p.ts.toLocaleString() : '',
+        '"'+(p.note||'').replaceAll('"','""')+'"'
+      ]);
+      const csv = [header.join(','), ...rows.map(r=>r.join(','))].join('
+');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'frequencia.csv'; a.click(); URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(str){
+      return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+    }
+
+    function slugify(s){
+      return (s||'').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g,'') // remove acentos
+        .replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')
+        .slice(0,64) || crypto.randomUUID();
+    }
+  </script>
+</body>
+</html>
